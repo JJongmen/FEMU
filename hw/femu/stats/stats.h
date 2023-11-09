@@ -6,6 +6,7 @@ typedef struct statistics {
     uint64_t read_count;        // 읽기 요청 횟수
     uint64_t io_write_count;    // io가 요청한 쓰기 횟수
     uint64_t gc_write_count;    // gc가 요청한 쓰기 횟수
+    uint64_t victim_line_count; // 
 } statistics;
 
 // 통계 데이터를 위한 전역 변수

@@ -20,7 +20,7 @@ void increase_host_write_count(void);
 
 void increase_host_write_pages_count(void);
 
-void increase_gc_write_count(int);
+void increase_gc_write_pages_count(int);
 
 void increase_victim_line_count(void);
 

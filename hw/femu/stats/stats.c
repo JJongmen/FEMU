@@ -34,7 +34,7 @@ void increase_host_write_pages_count(void) {
     stats.host_write_pages_count++;
 }
 
-void increase_gc_write_count(int vpc) {
+void increase_gc_write_pages_count(int vpc) {
     stats.gc_write_pages_count += vpc;
 }
 

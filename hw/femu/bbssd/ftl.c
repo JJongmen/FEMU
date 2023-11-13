@@ -740,6 +740,9 @@ static int do_gc(struct ssd *ssd, bool force)
               victim_line->ipc, ssd->lm.victim_line_cnt, ssd->lm.full_line_cnt,
               ssd->lm.free_line_cnt);
 
+    increase_gc_write_pages_count(victim_line->vpc);
+    increase_victim_line_count();
+
     /* copy back valid data */
     for (ch = 0; ch < spp->nchs; ch++) {
         for (lun = 0; lun < spp->luns_per_ch; lun++) {
@@ -764,9 +767,6 @@ static int do_gc(struct ssd *ssd, bool force)
 
     /* update line status */
     mark_line_free(ssd, &ppa);
-
-    increase_gc_write_count(victim_line->vpc);
-    increase_victim_line_count();
 
     return 0;
 }

@@ -740,9 +740,6 @@ static int do_gc(struct ssd *ssd, bool force)
               victim_line->ipc, ssd->lm.victim_line_cnt, ssd->lm.full_line_cnt,
               ssd->lm.free_line_cnt);
 
-    increase_gc_write_count(victim_line->vpc);
-    increase_victim_line_count();
-
     /* copy back valid data */
     for (ch = 0; ch < spp->nchs; ch++) {
         for (lun = 0; lun < spp->luns_per_ch; lun++) {
@@ -767,6 +764,9 @@ static int do_gc(struct ssd *ssd, bool force)
 
     /* update line status */
     mark_line_free(ssd, &ppa);
+
+    increase_gc_write_count(victim_line->vpc);
+    increase_victim_line_count();
 
     return 0;
 }
@@ -804,6 +804,7 @@ static uint64_t ssd_read(struct ssd *ssd, NvmeRequest *req)
         maxlat = (sublat > maxlat) ? sublat : maxlat;
     }
 
+    increase_host_read_count();
     return maxlat;
 }
 
@@ -859,6 +860,7 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
         maxlat = (curlat > maxlat) ? curlat : maxlat;
     }
 
+    increase_host_write_count();
     return maxlat;
 }
 
@@ -893,11 +895,9 @@ static void *ftl_thread(void *arg)
             switch (req->cmd.opcode) {
             case NVME_CMD_WRITE:
                 lat = ssd_write(ssd, req);
-                increase_io_write_count();
                 break;
             case NVME_CMD_READ:
                 lat = ssd_read(ssd, req);
-                increase_read_count();
                 break;
             case NVME_CMD_DSM:
                 lat = 0;

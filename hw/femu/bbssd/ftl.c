@@ -741,6 +741,7 @@ static int do_gc(struct ssd *ssd, bool force)
               ssd->lm.free_line_cnt);
 
     increase_gc_write_count(victim_line->vpc);
+    increase_victim_line_count();
 
     /* copy back valid data */
     for (ch = 0; ch < spp->nchs; ch++) {

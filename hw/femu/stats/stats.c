@@ -6,8 +6,8 @@ statistics stats = {0};
 // 통계 데이터를 출력하고 리셋하는 함수
 void print_and_reset_stats(unsigned long seconds) {
     // 통계 데이터 출력
-    printf("[%lu sec], Host_Read_Count: %lu, Host_Write_Count: %lu, GC_Write_Count: %lu, Victim_Line_Count: %lu\r\n", 
-           seconds, stats.host_read_count, stats.host_write_count, stats.gc_write_count, stats.victim_line_count);
+    printf("[%lu sec], Host_Read_Count: %lu, Host_Write_Count: %lu, Host_Write_Pages_Count: %lu, GC_Write_Pages_Count: %lu, Victim_Line_Count: %lu\r\n", 
+           seconds, stats.host_read_count, stats.host_write_count, stats.host_write_pages_count, stats.gc_write_pages_count, stats.victim_line_count);
     // 통계 데이터 리셋
     memset(&stats, 0, sizeof(stats));
 }
@@ -30,8 +30,12 @@ void increase_host_write_count(void) {
     stats.host_write_count++;
 }
 
+void increase_host_write_pages_count(void) {
+    stats.host_write_pages_count++;
+}
+
 void increase_gc_write_count(int vpc) {
-    stats.gc_write_count += vpc;
+    stats.gc_write_pages_count += vpc;
 }
 
 void increase_victim_line_count(void) {

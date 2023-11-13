@@ -848,6 +848,8 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
 
         mark_page_valid(ssd, &ppa);
 
+        increase_host_write_pages_count();
+
         /* need to advance the write pointer here */
         ssd_advance_write_pointer(ssd);
 

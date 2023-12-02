@@ -262,7 +262,7 @@ static void ssd_init_params(struct ssdparams *spp, FemuCtrl *n)
     spp->pgs_per_ch = spp->pgs_per_lun * spp->luns_per_ch;
     spp->tt_pgs = spp->pgs_per_ch * spp->nchs;
 
-    spp->blks_per_lun = spp->blks_per_pl * spp->pls_per_lun;
+    spp->blks_per_lun = spp->blks_per_pl * spp->pls_per_lun;    // 64 * 1 = 64
     spp->blks_per_ch = spp->blks_per_lun * spp->luns_per_ch;
     spp->tt_blks = spp->blks_per_ch * spp->nchs;
 
@@ -275,7 +275,7 @@ static void ssd_init_params(struct ssdparams *spp, FemuCtrl *n)
     spp->blks_per_line = spp->tt_luns; /* TODO: to fix under multiplanes */
     spp->pgs_per_line = spp->blks_per_line * spp->pgs_per_blk;
     spp->secs_per_line = spp->pgs_per_line * spp->secs_per_pg;
-    spp->tt_lines = spp->blks_per_lun; /* TODO: to fix under multiplanes */
+    spp->tt_lines = spp->blks_per_lun; /* TODO: to fix under multiplanes */ // 64
 
     spp->gc_thres_pcent = n->bb_params.gc_thres_pcent/100.0;
     spp->gc_thres_lines = (int)((1 - spp->gc_thres_pcent) * spp->tt_lines);
@@ -676,9 +676,9 @@ static struct line *select_victim_line(struct ssd *ssd, bool force)
         return NULL;
     }
 
-    if (!force && victim_line->ipc < ssd->sp.pgs_per_line / 8) {
-        return NULL;
-    }
+    // if (!force && victim_line->ipc < ssd->sp.pgs_per_line / 8) {
+    //     return NULL;
+    // }
 
     pqueue_pop(lm->victim_line_pq);
     victim_line->pos = 0;
@@ -735,13 +735,15 @@ static int do_gc(struct ssd *ssd, bool force)
         return -1;
     }
 
+    increase_victim_line_count_and_print_stats(victim_line->id);
+
     ppa.g.blk = victim_line->id;
     ftl_debug("GC-ing line:%d,ipc=%d,victim=%d,full=%d,free=%d\n", ppa.g.blk,
               victim_line->ipc, ssd->lm.victim_line_cnt, ssd->lm.full_line_cnt,
               ssd->lm.free_line_cnt);
 
-    increase_gc_write_pages_count(victim_line->vpc);
-    increase_victim_line_count();
+    // increase_gc_write_pages_count(victim_line->vpc);
+    // increase_victim_line_count();
 
     /* copy back valid data */
     for (ch = 0; ch < spp->nchs; ch++) {
@@ -804,7 +806,7 @@ static uint64_t ssd_read(struct ssd *ssd, NvmeRequest *req)
         maxlat = (sublat > maxlat) ? sublat : maxlat;
     }
 
-    increase_host_read_count();
+    // increase_host_read_count();
     return maxlat;
 }
 
@@ -848,7 +850,7 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
 
         mark_page_valid(ssd, &ppa);
 
-        increase_host_write_pages_count();
+        // increase_host_write_pages_count();
 
         /* need to advance the write pointer here */
         ssd_advance_write_pointer(ssd);
@@ -862,7 +864,7 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
         maxlat = (curlat > maxlat) ? curlat : maxlat;
     }
 
-    increase_host_write_count();
+    // increase_host_write_count();
     return maxlat;
 }
 
@@ -874,6 +876,10 @@ static void *ftl_thread(void *arg)
     uint64_t lat = 0;
     int rc;
     int i;
+    int ALPHA = n->bb_params.gc_alpha;
+    int BETA = n->bb_params.gc_beta;
+
+    printf("ALPHA : %d, BETA : %d\r\n", ALPHA, BETA);
 
     while (!*(ssd->dataplane_started_ptr)) {
         usleep(100000);

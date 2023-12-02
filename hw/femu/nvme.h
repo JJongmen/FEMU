@@ -1163,6 +1163,9 @@ typedef struct BbCtrlParams {
 
     int gc_thres_pcent;
     int gc_thres_pcent_high;
+
+    int gc_alpha;
+    int gc_beta;
 } BbCtrlParams;
 
 typedef struct ZNSCtrlParams {

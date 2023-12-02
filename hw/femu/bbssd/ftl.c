@@ -57,26 +57,42 @@ static inline void set_rmap_ent(struct ssd *ssd, uint64_t lpn, struct ppa *ppa)
     ssd->rmap[pgidx] = lpn;
 }
 
+// 노드의 우선순위 비교 (curr가 더 낮으면 참)
 static inline int victim_line_cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
 {
     return (next > curr);
 }
 
+// 노드의 우선순위 확인
 static inline pqueue_pri_t victim_line_get_pri(void *a)
 {
-    return ((struct line *)a)->vpc;
+    // return ((struct line *)a)->vpc;
+    return ((struct line *)a)->victim_score;
 }
 
+// 노드의 우선순위 설정
 static inline void victim_line_set_pri(void *a, pqueue_pri_t pri)
 {
-    ((struct line *)a)->vpc = pri;
+    // ((struct line *)a)->vpc = pri;
+    struct line* line = ((struct line *)a);
+    // pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
+    // line->victim_score = victim_score;  
+    pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
+
+    line->victim_score = victim_score; 
 }
 
+// static inline pqueue_pri_t calculate_victim_score(struct line* line) {
+//     return 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
+// }
+
+// 큐에서의 위치정보 획득
 static inline size_t victim_line_get_pos(void *a)
 {
     return ((struct line *)a)->pos;
 }
 
+// 큐에서의 위치정보 저장
 static inline void victim_line_set_pos(void *a, size_t pos)
 {
     ((struct line *)a)->pos = pos;
@@ -105,6 +121,7 @@ static void ssd_init_lines(struct ssd *ssd)
         line->ipc = 0;
         line->vpc = 0;
         line->pos = 0;
+        line->victim_score = 0;
         /* initialize all the lines as free lines */
         QTAILQ_INSERT_TAIL(&lm->free_line_list, line, entry);
         lm->free_line_cnt++;
@@ -269,11 +286,11 @@ static void ssd_init_params(struct ssdparams *spp, FemuCtrl *n)
     spp->pls_per_ch =  spp->pls_per_lun * spp->luns_per_ch;
     spp->tt_pls = spp->pls_per_ch * spp->nchs;
 
-    spp->tt_luns = spp->luns_per_ch * spp->nchs;
+    spp->tt_luns = spp->luns_per_ch * spp->nchs;    // 8 * 2 = 16
 
     /* line is special, put it at the end */
-    spp->blks_per_line = spp->tt_luns; /* TODO: to fix under multiplanes */
-    spp->pgs_per_line = spp->blks_per_line * spp->pgs_per_blk;
+    spp->blks_per_line = spp->tt_luns; /* TODO: to fix under multiplanes */ // 16
+    spp->pgs_per_line = spp->blks_per_line * spp->pgs_per_blk;  // 16 * 256 = 4096
     spp->secs_per_line = spp->pgs_per_line * spp->secs_per_pg;
     spp->tt_lines = spp->blks_per_lun; /* TODO: to fix under multiplanes */ // 64
 
@@ -559,7 +576,8 @@ static void mark_page_invalid(struct ssd *ssd, struct ppa *ppa)
     /* Adjust the position of the victime line in the pq under over-writes */
     if (line->pos) {
         /* Note that line->vpc will be updated by this call */
-        pqueue_change_priority(lm->victim_line_pq, line->vpc - 1, line);
+        pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
+        pqueue_change_priority(lm->victim_line_pq, victim_score, line);
     } else {
         line->vpc--;
     }
@@ -876,10 +894,10 @@ static void *ftl_thread(void *arg)
     uint64_t lat = 0;
     int rc;
     int i;
-    int ALPHA = n->bb_params.gc_alpha;
-    int BETA = n->bb_params.gc_beta;
+    stats.alpha = n->bb_params.gc_alpha;
+    stats.beta = n->bb_params.gc_beta;
 
-    printf("ALPHA : %d, BETA : %d\r\n", ALPHA, BETA);
+    printf("ALPHA : %d, BETA : %d\r\n", stats.alpha, stats.beta);
 
     while (!*(ssd->dataplane_started_ptr)) {
         usleep(100000);

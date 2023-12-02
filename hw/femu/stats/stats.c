@@ -1,11 +1,11 @@
 #include "../nvme.h"
 #include "./stats.h"
 
-statistics stats = {{0}, 64, 0, false};
+statistics stats = {{0}, 64, 0, false, 1.0, 0.0};
 
 void increase_lines_erase_counts_and_print_stats(int line_id) {
     if (!stats.reached) {
-        if (++stats.lines_erase_counts[line_id] == 32) {
+        if (++stats.lines_erase_counts[line_id] == 64) {
             stats.reached = true;
             print_stats();
         }

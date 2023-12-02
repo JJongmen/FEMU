@@ -6,6 +6,8 @@ typedef struct statistics {
     int tt_lines;
     int host_write_io_count;
     bool reached;
+    int alpha;
+    int beta;
 } statistics;
 
 // 통계 데이터를 위한 전역 변수

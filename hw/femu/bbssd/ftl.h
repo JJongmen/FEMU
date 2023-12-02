@@ -163,6 +163,7 @@ typedef struct line {
     QTAILQ_ENTRY(line) entry; /* in either {free,victim,full} list */
     /* position in the priority queue for victim lines */
     size_t                  pos;
+    pqueue_pri_t victim_score;  // victim score
 } line;
 
 /* wp: record next write addr */

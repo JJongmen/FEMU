@@ -1,29 +1,21 @@
 #include "../nvme.h"
-#include <pthread.h>
 
 // 통계 데이터를 위한 구조체
 typedef struct statistics {
-    uint64_t host_read_count;        // host가 요청한 읽기 횟수
-    uint64_t host_write_count;       // host가 요청한 쓰기 횟수
-    uint64_t host_write_pages_count; // host가 작성한 페이지 개수
-    uint64_t gc_write_pages_count;   // gc가 작성한 페이지 개수
-    uint64_t victim_line_count;      // gc가 victim line을 선정한 횟수
+    int lines_erase_counts[64];  // line별 victim line으로 선택된 횟수
+    int tt_lines;
+    int host_write_io_count;
+    bool reached;
+    int alpha;
+    int beta;
 } statistics;
 
 // 통계 데이터를 위한 전역 변수
 extern statistics stats;
 
-// 통계 데이터를 업데이트하는 함수들
-void increase_host_read_count(void);
+// 통계 데이터를 업데이트하는 함수
+void increase_lines_erase_counts_and_print_stats(int);   // 입력된 line의 id의 victim line 선정 횟수를 늘린다
 
-void increase_host_write_count(void);
+void increase_host_write_io_count(void);
 
-void increase_host_write_pages_count(void);
-
-void increase_gc_write_pages_count(int);
-
-void increase_victim_line_count(void);
-
-void print_and_reset_stats(unsigned long);
-
-void *stats_thread_func(void*);
+void print_stats(void);

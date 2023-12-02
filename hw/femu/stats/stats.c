@@ -1,43 +1,26 @@
 #include "../nvme.h"
 #include "./stats.h"
 
-statistics stats = {0};
+statistics stats = {{0}, 64, 0, false, 1.0, 0.0};
 
-// 통계 데이터를 출력하고 리셋하는 함수
-void print_and_reset_stats(unsigned long seconds) {
-    // 통계 데이터 출력
-    printf("[%lu sec], Host_Read_Count: %lu, Host_Write_Count: %lu, Host_Write_Pages_Count: %lu, GC_Write_Pages_Count: %lu, Victim_Line_Count: %lu\r\n", 
-           seconds, stats.host_read_count, stats.host_write_count, stats.host_write_pages_count, stats.gc_write_pages_count, stats.victim_line_count);
-    // 통계 데이터 리셋
-    memset(&stats, 0, sizeof(stats));
-}
-
-// 1초마다 통계를 출력하고 초기화하는 스레드 함수
-void *stats_thread_func(void *arg) {
-    unsigned long elapsed_seconds = 0;  // 경과 시간
-    while (1) {
-        sleep(1); // 1초 대기
-        print_and_reset_stats(++elapsed_seconds); // 통계 출력 및 초기화
+void increase_lines_erase_counts_and_print_stats(int line_id) {
+    if (!stats.reached) {
+        if (++stats.lines_erase_counts[line_id] == 64) {
+            stats.reached = true;
+            print_stats();
+        }
     }
-    return NULL;
 }
 
-void increase_host_read_count(void) {
-    stats.host_read_count++;
+// 통계 데이터를 출력하는 함수
+void print_stats(void) {
+    printf("Host Write IO Count : %d\r\n", stats.host_write_io_count);
+    for (int i = 0; i < stats.tt_lines - 1; i++) {
+        printf("%d,", stats.lines_erase_counts[i]);
+    }
+    printf("%d\r\n", stats.lines_erase_counts[stats.tt_lines - 1]);
 }
 
-void increase_host_write_count(void) {
-    stats.host_write_count++;
-}
-
-void increase_host_write_pages_count(void) {
-    stats.host_write_pages_count++;
-}
-
-void increase_gc_write_pages_count(int vpc) {
-    stats.gc_write_pages_count += vpc;
-}
-
-void increase_victim_line_count(void) {
-    stats.victim_line_count++;    
+void increase_host_write_io_count(void) {
+    stats.host_write_io_count++;
 }

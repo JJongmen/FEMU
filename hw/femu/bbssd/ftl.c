@@ -735,7 +735,7 @@ static int do_gc(struct ssd *ssd, bool force)
         return -1;
     }
 
-    increase_victim_line_count_and_print_stats(victim_line->id);
+    increase_lines_erase_counts_and_print_stats(victim_line->id);
 
     ppa.g.blk = victim_line->id;
     ftl_debug("GC-ing line:%d,ipc=%d,victim=%d,full=%d,free=%d\n", ppa.g.blk,
@@ -864,7 +864,7 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
         maxlat = (curlat > maxlat) ? curlat : maxlat;
     }
 
-    // increase_host_write_count();
+    increase_host_write_io_count();
     return maxlat;
 }
 

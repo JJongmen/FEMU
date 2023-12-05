@@ -3,6 +3,8 @@
 
 //#define FEMU_DEBUG_FTL
 
+static pqueue_pri_t get_victim_priority(line *line, struct ssd *ssd);
+
 static void *ftl_thread(void *arg);
 
 static inline bool should_gc(struct ssd *ssd)
@@ -66,7 +68,9 @@ static inline int victim_line_cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
 // 노드의 우선순위 확인
 static inline pqueue_pri_t victim_line_get_pri(void *a)
 {
-    // return ((struct line *)a)->vpc;
+    if (stats.alpha == 100) {
+        return ((struct line *)a)->vpc;
+    }
     return ((struct line *)a)->victim_score;
 }
 
@@ -75,11 +79,12 @@ static inline void victim_line_set_pri(void *a, pqueue_pri_t pri)
 {
     // ((struct line *)a)->vpc = pri;
     struct line* line = ((struct line *)a);
+    line->vpc--;
     // pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
     // line->victim_score = victim_score;  
-    pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
-
-    line->victim_score = victim_score; 
+    // pqueue_pri_t victim_score = line->vpc * stats.alpha + stats.lines_erase_counts[line->id] * 64 * stats.beta;
+    // get_victim_priority()
+    line->victim_score = pri; 
 }
 
 // static inline pqueue_pri_t calculate_victim_score(struct line* line) {
@@ -202,6 +207,7 @@ static void ssd_advance_write_pointer(struct ssd *ssd)
                     ftl_assert(wpp->curline->vpc >= 0 && wpp->curline->vpc < spp->pgs_per_line);
                     /* there must be some invalid pages in this line */
                     ftl_assert(wpp->curline->ipc > 0);
+                    wpp->curline->victim_score = get_victim_priority(wpp->curline, ssd);
                     pqueue_insert(lm->victim_line_pq, wpp->curline);
                     lm->victim_line_cnt++;
                 }
@@ -576,7 +582,8 @@ static void mark_page_invalid(struct ssd *ssd, struct ppa *ppa)
     /* Adjust the position of the victime line in the pq under over-writes */
     if (line->pos) {
         /* Note that line->vpc will be updated by this call */
-        pqueue_pri_t victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
+        // pqueue_pri_t victim_score = line->vpc * stats.alpha + stats.lines_erase_counts[line->id] * 64 * stats.beta;
+        pqueue_pri_t victim_score = get_victim_priority(line, ssd);
         pqueue_change_priority(lm->victim_line_pq, victim_score, line);
     } else {
         line->vpc--;
@@ -586,6 +593,7 @@ static void mark_page_invalid(struct ssd *ssd, struct ppa *ppa)
         /* move line: "full" -> "victim" */
         QTAILQ_REMOVE(&lm->full_line_list, line, entry);
         lm->full_line_cnt--;
+        line->victim_score = get_victim_priority(line, ssd);
         pqueue_insert(lm->victim_line_pq, line);
         lm->victim_line_cnt++;
     }
@@ -631,6 +639,16 @@ static void mark_block_free(struct ssd *ssd, struct ppa *ppa)
     blk->ipc = 0;
     blk->vpc = 0;
     blk->erase_cnt++;
+
+    struct line_mgmt *lm = &ssd->lm;
+    struct line *line;
+    line = get_line(ssd, ppa);
+    if (line->pos) {
+        /* Note that line->vpc will be updated by this call */
+        // pqueue_pri_t victim_score = line->vpc * stats.alpha + stats.lines_erase_counts[line->id] * 64 * stats.beta;
+        pqueue_pri_t victim_score = get_victim_priority(line, ssd);
+        pqueue_change_priority(lm->victim_line_pq, victim_score, line);
+    }
 }
 
 static void gc_read_page(struct ssd *ssd, struct ppa *ppa)
@@ -886,6 +904,19 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
     return maxlat;
 }
 
+static pqueue_pri_t get_victim_priority(line *line, struct ssd *ssd) {
+    struct ssdparams *spp = &ssd->sp;
+    struct ppa ppa;
+    ppa.ppa = 0;
+    ppa.g.blk = line->id;
+
+    long vpc = line->vpc;
+    long ttpc = spp->pgs_per_line;
+    long ec = get_blk(ssd, &ppa)->erase_cnt;
+
+    return (pqueue_pri_t) (((vpc<<10)/ttpc)*stats.alpha + ((ec<<10)/stats.dead_pe)*stats.beta);
+}
+
 static void *ftl_thread(void *arg)
 {
     FemuCtrl *n = (FemuCtrl *)arg;
@@ -896,6 +927,7 @@ static void *ftl_thread(void *arg)
     int i;
     stats.alpha = n->bb_params.gc_alpha;
     stats.beta = n->bb_params.gc_beta;
+    stats.dead_pe = 64;
 
     printf("ALPHA : %d, BETA : %d\r\n", stats.alpha, stats.beta);
 

@@ -8,6 +8,7 @@ typedef struct statistics {
     bool reached;
     int alpha;
     int beta;
+    int dead_pe;
 } statistics;
 
 // 통계 데이터를 위한 전역 변수

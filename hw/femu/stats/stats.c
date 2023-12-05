@@ -1,7 +1,7 @@
 #include "../nvme.h"
 #include "./stats.h"
 
-statistics stats = {{0}, 64, 0, false, 1.0, 0.0};
+statistics stats = {{0}, 64, 0, false, 100, 0, 64};
 
 void increase_lines_erase_counts_and_print_stats(int line_id) {
     if (!stats.reached) {

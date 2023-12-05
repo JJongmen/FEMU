@@ -580,6 +580,7 @@ static void mark_page_invalid(struct ssd *ssd, struct ppa *ppa)
         pqueue_change_priority(lm->victim_line_pq, victim_score, line);
     } else {
         line->vpc--;
+        line->victim_score = 10000 * line->vpc / 4096 * stats.alpha + 10000 * stats.lines_erase_counts[line->id] / 64 * stats.beta;
     }
 
     if (was_full_line) {

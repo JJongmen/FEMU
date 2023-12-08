@@ -68,9 +68,9 @@ static inline int victim_line_cmp_pri(pqueue_pri_t next, pqueue_pri_t curr)
 // 노드의 우선순위 확인
 static inline pqueue_pri_t victim_line_get_pri(void *a)
 {
-    if (stats.alpha == 100) {
-        return ((struct line *)a)->vpc;
-    }
+    // if (stats.alpha == 100) {
+    //     return ((struct line *)a)->vpc;
+    // }
     return ((struct line *)a)->victim_score;
 }
 
@@ -646,6 +646,7 @@ static void mark_block_free(struct ssd *ssd, struct ppa *ppa)
     if (line->pos) {
         /* Note that line->vpc will be updated by this call */
         // pqueue_pri_t victim_score = line->vpc * stats.alpha + stats.lines_erase_counts[line->id] * 64 * stats.beta;
+        line->vpc++;
         pqueue_pri_t victim_score = get_victim_priority(line, ssd);
         pqueue_change_priority(lm->victim_line_pq, victim_score, line);
     }

@@ -906,16 +906,17 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
 }
 
 static pqueue_pri_t get_victim_priority(line *line, struct ssd *ssd) {
-    struct ssdparams *spp = &ssd->sp;
+    // struct ssdparams *spp = &ssd->sp;
     struct ppa ppa;
     ppa.ppa = 0;
     ppa.g.blk = line->id;
 
     long vpc = line->vpc;
-    long ttpc = spp->pgs_per_line;
+    // long ttpc = spp->pgs_per_line;
     long ec = get_blk(ssd, &ppa)->erase_cnt;
 
-    return (pqueue_pri_t) (((vpc<<10)/ttpc)*stats.alpha + ((ec<<10)/stats.dead_pe)*stats.beta);
+    // return (pqueue_pri_t) (((vpc<<10)/ttpc)*stats.alpha + ((ec<<10)/stats.dead_pe)*stats.beta);
+    return (pqueue_pri_t) (vpc*stats.alpha + 64*ec*stats.beta); // ttpc / dead_pe = 64
 }
 
 static void *ftl_thread(void *arg)
